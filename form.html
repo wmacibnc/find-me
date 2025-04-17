@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Preencher Comprovante</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      padding: 20px;
+    }
+    .formulario {
+      background: white;
+      padding: 25px;
+      max-width: 400px;
+      margin: 0 auto;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #4caf50;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4caf50;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      width: 100%;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .msg {
+      margin-top: 10px;
+      text-align: center;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="formulario">
+    <h2>Preencher Comprovante</h2>
+    <input type="text" id="destinatario" placeholder="Destinatário" required>
+    <input type="number" id="valor" placeholder="Valor (R$)" required>
+    <input type="date" id="data" required>
+    <select id="banco">
+      <option value="">Selecione o Banco</option>
+      <option value="PIX - Nubank">PIX - Nubank</option>
+      <option value="PIX - Itaú">PIX - Itaú</option>
+      <option value="PIX - Bradesco">PIX - Bradesco</option>
+    </select>
+    <button onclick="salvar()">Salvar Comprovante</button>
+    <div class="msg" id="mensagem"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQQ5UzK3Kv8vVElu3EXOVwydASMBWyM0c",
+      authDomain: "find-33687.firebaseapp.com",
+      projectId: "find-33687",
+      databaseURL: "https://find-33687-default-rtdb.firebaseio.com",
+      storageBucket: "find-33687.appspot.com",
+      messagingSenderId: "5572697061",
+      appId: "1:5572697061:web:c1cdddc264b9e5fcea2d0c"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    function salvar() {
+      const valor = document.getElementById("valor").value;
+      const destinatario = document.getElementById("destinatario").value;
+      const data = document.getElementById("data").value;
+      const banco = document.getElementById("banco").value;
+
+      if (!valor || !destinatario || !data || !banco) {
+        document.getElementById("mensagem").innerText = "Preencha todos os campos!";
+        return;
+      }
+
+      const dados = {
+        valor: `R$ ${parseFloat(valor).toFixed(2)}`,
+        destinatario,
+        data,
+        banco,
+        criadoEm: new Date().toISOString()
+      };
+
+      database.ref("comprovantes").push(dados).then(() => {
+        document.getElementById("mensagem").innerText = "Comprovante salvo com sucesso!";
+      }).catch(err => {
+        document.getElementById("mensagem").innerText = "Erro ao salvar: " + err.message;
+      });
+    }
+  </script>
+</body>
+</html>
