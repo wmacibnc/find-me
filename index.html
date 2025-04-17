@@ -173,12 +173,21 @@
             
             <div class="divider"></div>
             
-            <div class="info-section">
-              <h2>Destinatário</h2>
-              <div class="info-line">${dados.destinatario}</div>
-              <div class="info-line">CNPJ: 13.382.906/0001-60</div>
-              <div class="info-line">Instituição: ${dados.banco}</div>
-            </div>
+           <div class="info-section">
+  <h2>Destinatário</h2>
+  <div class="info-line">${dados.destinatario}</div>
+  ${dados.documentType && dados.documentNumber ?
+    (dados.documentType === 'CPF' ?
+      `<div class="info-line">CPF: ${dados.documentNumber}</div>` :
+      `<div class="info-line">CNPJ: ${dados.documentNumber}</div>`
+    ) :
+    (dados.documentType === 'CPF' ?
+      `<div class="info-line">CPF: ***.***.***-**</div>` :
+      `<div class="info-line">CNPJ: **.***.***/****-**</div>`
+    )
+  }
+  <div class="info-line">Instituição: ${dados.banco}</div>
+</div>
             
             <div class="info-section">
               <h2>Dados do pagador</h2>
@@ -189,7 +198,6 @@
             
             <div class="info-section">
               <h2>Dados do devedor</h2>
-              <div class="info-line">-</div>
             </div>
             
             <div class="info-section">
