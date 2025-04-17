@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Preencher Comprovante</title>
+  <title>Preencher Comprovante PIX</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -20,13 +20,38 @@
     h2 {
       text-align: center;
       color: #4caf50;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #555;
     }
     input, select {
       width: 100%;
       padding: 10px;
-      margin: 8px 0;
       border-radius: 5px;
       border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    .radio-group {
+      margin: 10px 0;
+    }
+    .radio-option {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .radio-option input {
+      width: auto;
+      margin-right: 10px;
+    }
+    .document-input {
+      display: none;
     }
     button {
       background-color: #4caf50;
@@ -36,31 +61,95 @@
       border-radius: 5px;
       width: 100%;
       cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
     }
     button:hover {
       background-color: #45a049;
     }
     .msg {
-      margin-top: 10px;
+      margin-top: 15px;
+      padding: 10px;
       text-align: center;
-      color: #333;
+      border-radius: 5px;
+    }
+    .success {
+      background-color: #dff0d8;
+      color: #3c763d;
+    }
+    .error {
+      background-color: #f2dede;
+      color: #a94442;
     }
   </style>
 </head>
 <body>
   <div class="formulario">
-    <h2>Preencher Comprovante</h2>
-    <input type="text" id="destinatario" placeholder="Destinatário" required>
-    <input type="number" id="valor" placeholder="Valor (R$)" required>
-    <input type="date" id="data" required>
-    <select id="banco">
-      <option value="">Selecione o Banco</option>
-      <option value="PIX - Nubank">PIX - Nubank</option>
-      <option value="PIX - Itaú">PIX - Itaú</option>
-      <option value="PIX - Bradesco">PIX - Bradesco</option>
-    </select>
-    <button onclick="salvar()">Salvar Comprovante</button>
-    <div class="msg" id="mensagem"></div>
+    <h2>Preencher Comprovante PIX</h2>
+    
+    <div class="form-group">
+      <label for="destinatario">Destinatário:</label>
+      <input type="text" id="destinatario" placeholder="Nome completo ou Razão Social" required>
+    </div>
+    
+    <div class="form-group">
+      <label>Tipo de documento:</label>
+      <div class="radio-group">
+        <div class="radio-option">
+          <input type="radio" id="cpf" name="documentType" value="CPF" checked>
+          <label for="cpf" style="font-weight:normal">CPF</label>
+        </div>
+        <div class="radio-option">
+          <input type="radio" id="cnpj" name="documentType" value="CNPJ">
+          <label for="cnpj" style="font-weight:normal">CNPJ</label>
+        </div>
+      </div>
+      
+      <div id="cpfGroup" class="document-input">
+        <input type="text" id="cpfNumber" placeholder="000.000.000-00" maxlength="14" 
+               oninput="formatCPF(this)">
+      </div>
+      
+      <div id="cnpjGroup" class="document-input">
+        <input type="text" id="cnpjNumber" placeholder="00.000.000/0000-00" maxlength="18" 
+               oninput="formatCNPJ(this)">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="valor">Valor:</label>
+      <input type="text" id="valor" placeholder="R$ 0,00" required oninput="formatCurrency(this)">
+    </div>
+    
+    <div class="form-group">
+      <label for="data">Data:</label>
+      <input type="date" id="data" required>
+    </div>
+    
+    <div class="form-group">
+      <label for="banco">Instituição:</label>
+      <select id="banco" required>
+        <option value="">Selecione a instituição</option>
+        <optgroup label="Bancos">
+          <option value="PIX - Banco do Brasil">Banco do Brasil</option>
+          <option value="PIX - Caixa Econômica">Caixa Econômica Federal</option>
+          <option value="PIX - Itaú">Itaú</option>
+          <option value="PIX - Bradesco">Bradesco</option>
+          <option value="PIX - Santander">Santander</option>
+          <option value="PIX - Nubank">Nubank</option>
+          <option value="PIX - Inter">Banco Inter</option>
+          <option value="PIX - C6 Bank">C6 Bank</option>
+        </optgroup>
+        <optgroup label="Carteiras Digitais">
+          <option value="PIX - PicPay">PicPay</option>
+          <option value="PIX - Mercado Pago">Mercado Pago</option>
+          <option value="PIX - PagSeguro">PagSeguro</option>
+        </optgroup>
+      </select>
+    </div>
+    
+    <button onclick="salvar()">Gerar Comprovante</button>
+    <div id="mensagem" class="msg"></div>
   </div>
 
   <!-- Firebase SDK -->
@@ -68,6 +157,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
 
   <script>
+    // Configuração do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBQQ5UzK3Kv8vVElu3EXOVwydASMBWyM0c",
       authDomain: "find-33687.firebaseapp.com",
@@ -81,30 +171,109 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
+    // Mostrar o campo de documento correto
+    document.querySelectorAll('input[name="documentType"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        document.getElementById('cpfGroup').style.display = this.value === 'CPF' ? 'block' : 'none';
+        document.getElementById('cnpjGroup').style.display = this.value === 'CNPJ' ? 'block' : 'none';
+      });
+    });
+
+    // Mostrar CPF por padrão
+    document.getElementById('cpfGroup').style.display = 'block';
+
+    // Formatar CPF
+    function formatCPF(input) {
+      let value = input.value.replace(/\D/g, '');
+      
+      if (value.length > 3) {
+        value = value.replace(/^(\d{3})/, '$1.');
+      }
+      if (value.length > 7) {
+        value = value.replace(/^(\d{3})\.(\d{3})/, '$1.$2.');
+      }
+      if (value.length > 11) {
+        value = value.replace(/^(\d{3})\.(\d{3})\.(\d{3})/, '$1.$2.$3-');
+      }
+      
+      input.value = value.substring(0, 14);
+    }
+
+    // Formatar CNPJ
+    function formatCNPJ(input) {
+      let value = input.value.replace(/\D/g, '');
+      
+      if (value.length > 2) {
+        value = value.replace(/^(\d{2})/, '$1.');
+      }
+      if (value.length > 6) {
+        value = value.replace(/^(\d{2})\.(\d{3})/, '$1.$2.');
+      }
+      if (value.length > 10) {
+        value = value.replace(/^(\d{2})\.(\d{3})\.(\d{3})/, '$1.$2.$3/');
+      }
+      if (value.length > 15) {
+        value = value.replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})/, '$1.$2.$3/$4-');
+      }
+      
+      input.value = value.substring(0, 18);
+    }
+
+    // Formatar moeda
+    function formatCurrency(input) {
+      let value = input.value.replace(/\D/g, '');
+      value = (value / 100).toFixed(2) + '';
+      value = value.replace(".", ",");
+      value = value.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+      value = value.replace(/(\d)(\d{3}),/g, "$1.$2,");
+      input.value = 'R$ ' + value;
+    }
+
     function salvar() {
       const valor = document.getElementById("valor").value;
       const destinatario = document.getElementById("destinatario").value;
       const data = document.getElementById("data").value;
       const banco = document.getElementById("banco").value;
+      const documentType = document.querySelector('input[name="documentType"]:checked').value;
+      const documentNumber = documentType === 'CPF' 
+        ? document.getElementById("cpfNumber").value 
+        : document.getElementById("cnpjNumber").value;
 
-      if (!valor || !destinatario || !data || !banco) {
-        document.getElementById("mensagem").innerText = "Preencha todos os campos!";
+      if (!valor || !destinatario || !data || !banco || !documentNumber) {
+        showMessage("Preencha todos os campos!", "error");
         return;
       }
 
       const dados = {
-        valor: `R$ ${parseFloat(valor).toFixed(2)}`,
-        destinatario,
-        data,
-        banco,
+        valor: valor,
+        destinatario: destinatario,
+        data: data,
+        banco: banco,
+        documentType: documentType,
+        documentNumber: documentNumber,
         criadoEm: new Date().toISOString()
       };
 
-      database.ref("comprovantes").push(dados).then(() => {
-        document.getElementById("mensagem").innerText = "Comprovante salvo com sucesso!";
-      }).catch(err => {
-        document.getElementById("mensagem").innerText = "Erro ao salvar: " + err.message;
-      });
+      database.ref("comprovantes").push(dados)
+        .then(() => {
+          showMessage("Comprovante salvo com sucesso!", "success");
+          // Limpar formulário
+          document.querySelector("form").reset();
+        })
+        .catch(err => {
+          showMessage("Erro ao salvar: " + err.message, "error");
+        });
+    }
+
+    function showMessage(text, type) {
+      const msgElement = document.getElementById("mensagem");
+      msgElement.innerText = text;
+      msgElement.className = "msg " + type;
+      msgElement.style.display = "block";
+      
+      setTimeout(() => {
+        msgElement.style.display = "none";
+      }, 5000);
     }
   </script>
 </body>
